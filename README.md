@@ -311,11 +311,13 @@ sudo snort -c myrules.rules -i eth0
 
 ---
 
-**Réponse :**  Une fois lancé, Snort affiche d'abord des informations d'initialisations, puis il commence à analyser les paquets. Aucune option d'affichage n'est renseignée, donc aucune information relative au trafic n'apparaît sur la console. 
+**Réponse :**  Une fois lancé, Snort affiche d'abord des informations d'initialisations (initialisation des plugins,  des pré-processeurs, des chaînes de règles, énumération des ports et protocoles à capturer, etc.), puis il commence à analyser les paquets. Aucune option d'affichage n'est renseignée (`-v`), donc aucune information relative au trafic n'apparaît sur la console. 
 
 Cependant, vu qu'aucun pré-processeur n'est configuré dans notre fichier, Snort affiche en boucle le message _WARNING: No preprocessors configured for policy 0._ à intervalle très court. Ce message apparaît car notre fichier de configuration ne contient aucun pré-processeur, qui sont des "plug-ins" de Snort qui permettent de suivre des connexions, réassembler les paquets, décoder certains types de protocoles, etc. 
 
 Ces pré-processeurs sont configurés dans le fichier de configuration `/etc/snort/snort.conf` fourni par défaut.
+
+![Question2](images/snort_init.png)
 
 ---
 
@@ -333,6 +335,8 @@ Aller à un site web contenant votre nom ou votre mot clé que vous avez choisi 
 * les actions entreprises
 * etc.
 
+![Question3](images/snort_pistache.png)
+
 ---
 
 Aller au répertoire /var/log/snort. Ouvrir le fichier `alert`. Vérifier qu'il y ait des alertes pour votre nom.
@@ -341,23 +345,17 @@ Aller au répertoire /var/log/snort. Ouvrir le fichier `alert`. Vérifier qu'il 
 
 ---
 
-**Réponse :**  Une alerte reçue a la forme suivante :
+**Réponse :**  Une alerte reçue possède la forme suivante :
 
-```
-[**] [1:4555555:1] Petit chat mignon! [**]
-[Priority: 0] 
-04/02-16:26:45.736104 10.192.106.82:51645 -> 23.8.1.34:80
-TCP TTL:128 TOS:0x0 ID:64396 IpLen:20 DgmLen:481 DF
-***AP*** Seq: 0x92176D80  Ack: 0x6D065DD6  Win: 0x201  TcpLen: 20
-```
+![Question4](images/snort_alert.png)
 
 Le premier champs contient l'ID de notre règle ainsi que sa révision et son message.
 
 Le second champs renseigne sur la priorité, ici `0` signifie la plus basse. Snort se réfère au fichier `classification.config` pour connaître la priorité d'un évènement.
 
-Le troisième champs indique entre autres la date de l'alerte ainsi que les adresses IP concernées.
+Le troisième champs indique la date de l'alerte ainsi que les adresses IP concernées.
 
-Les quatrième et cinquième champs donnent diverses informations sur le paquet en lui-même.
+Les quatrième et cinquième champs donnent diverses informations sur le paquet en lui-même : TTL (time-to-live), TOS (type of service), ID, longueur du header IP, longueur du datagramme, ID de séquence, ID d'acquittement, taille de la fenêtre, longueur du segment tcp.
 
 ---
 
@@ -383,6 +381,8 @@ Pendant la capture, avec le paramètre `-v`, on peut constater des messages tels
 
 Une fois la capture terminée, on se rend à l'emplacement `/var/log/snort` et on peut constater un nouveau fichier de log nommé `snort.log.1554390576` que l'on peut ouvrir avec Wireshark. Il contient l'échange complet des paquets entre l'hôte et Wikipédia.
 
+![Question5](images/snort_wikipedia.png)
+
 ---
 
 ### Détecter un ping d'un autre système
@@ -399,17 +399,11 @@ Ecrire une règle qui alerte à chaque fois que votre système reçoit un ping d
 alert icmp any any -> 10.192.106.82 any (itype:8; msg:"I have been ping'd!"; sid:4555557; rev:1;)
 ```
 
-Pour identifier seulement les pings entrants, il suffit de spécifier que l'on ne veut loguer que les `ECHO REQUEST`  sur l'IP hôte avec le paramètre `itype:8` et de bien mettre l'hôte en destinataire (->).
+Pour identifier seulement les pings entrants, il suffit de spécifier que l'on ne veut loguer que les `ECHO REQUEST` sur l'IP hôte avec le paramètre `itype:8` et de bien mettre l'hôte en destinataire (->).
 
 Le message est journalisé dans le fichier `/var/log/snort/alert` et on voit les informations suivantes :
 
-```
-[**] [1:4555557:1] I have been ping'd! [**]
-[Priority: 0] 
-04/04-17:36:12.168580 10.192.95.109 -> 10.192.106.82
-ICMP TTL:127 TOS:0x0 ID:15835 IpLen:20 DgmLen:60
-Type:8  Code:0  ID:1   Seq:8  ECHO
-```
+![Question6](images/snort_ping_1.png)
 
 Sans le paramètre `itype:8`, les `ECHO REPLY` sont aussi journalisées.
 
@@ -431,21 +425,11 @@ alert icmp any any <> 10.192.106.82 any (itype:8; msg:"Someone is playing ping w
 
 L'opérateur de direction `<>` permet d'activer la règle dans les deux sens, c'est à-dire que la source et la destination peuvent être intervertis. Cela fonctionne à présent dans les deux sens :
 
-```
-[**] [1:4555557:1] Someone is playing ping without pong! [**]
-[Priority: 0] 
-04/04-17:44:12.555070 10.192.95.109 -> 10.192.106.82
-ICMP TTL:127 TOS:0x0 ID:16410 IpLen:20 DgmLen:60
-Type:8  Code:0  ID:1   Seq:13  ECHO
+![Question7.1](images/snort_ping_2.png)
 
-[**] [1:4555557:1] Someone is playing ping without pong! [**]
-[Priority: 0] 
-04/04-17:44:13.559548 10.192.106.82 -> 10.192.95.109
-ICMP TTL:128 TOS:0x0 ID:7478 IpLen:20 DgmLen:60
-Type:8  Code:0  ID:1   Seq:52  ECHO
-```
+(Nous sommes partis du principe que la question demandait de faire un `ECHO REQUEST` dans les deux sens, toujours sans `ECHO REPLY`. Si on veut pouvoir faire les deux, il suffit d'enlever le paramètre `itype:8`.)
 
-
+![Question7.2](images/snort_ping_3.png)
 
 ---
 
@@ -453,7 +437,7 @@ Type:8  Code:0  ID:1   Seq:52  ECHO
 
 Essayer d'écrire une règle qui alerte qu'une tentative de session SSH a été faite depuis la machine d'un voisin. Si vous avez besoin de plus d'informations sur ce qui décrit cette tentative (adresses, ports, protocoles), servez-vous de Wireshark pour analyser les échanges lors de la requête de connexion depuis votre voisin.
 
-**Question 8: Quelle est votre règle ? Montrer la règle et expliquer comment elle fonctionne. Montre le message d'alerte enregistré dans le fichier d'alertes.**
+**Question 8: Quelle est votre règle ? Montrer la règle et expliquer comment elle fonctionne. Montrer le message d'alerte enregistré dans le fichier d'alertes.**
 
 ---
 
@@ -465,16 +449,7 @@ alert tcp 10.192.0.0/16 any -> 10.192.106.82 22 (msg:"ssh Login Attempt"; sid:45
 
 Elle fonctionne comme suit : si une adresse IP du range 10.192.0.1 à 10.192.255.254 (range de l'école ?) tente une connexion SSH sur l'hôte (donc sur son port 22), alors Snort le détecte et log une alerte.
 
-```
-[**] [1:4555558:1] ssh Login Attempt [**]
-[Priority: 0] 
-04/04-18:00:38.918790 10.192.95.109:60711 -> 10.192.106.82:22
-TCP TTL:127 TOS:0x0 ID:17563 IpLen:20 DgmLen:52 DF
-******S* Seq: 0x85AADBFD  Ack: 0x0  Win: 0xFAF0  TcpLen: 32
-TCP Options (6) => MSS: 1460 NOP WS: 8 NOP NOP SackOK 
-```
-
-
+![Question8](images/snort_ssh.png)
 
 ---
 
@@ -500,9 +475,17 @@ Utiliser l'option correcte de Snort pour analyser le fichier de capture Wireshar
 
 ---
 
-**Réponse :**  L'ouverture avec Snort d'un fichier capturé depuis Wireshark affiche le même "récapitulatif" que lorsqu'il s'agit d'une capture Snort. Cependant, la capture Snort affiche davantage d'informations puisqu'on  peut y voir les statistiques et verdicts à la fin du scan (nombre d'alertes, nombre de logs, nombre de paquets acceptés, etc.).
+**Réponse :**  L'ouverture avec Snort d'un fichier capturé depuis Wireshark affiche le même "récapitulatif" que lorsqu'il s'agit d'une capture Snort temps réel. Cependant, la capture Snort affiche davantage d'informations puisqu'on  peut y voir les statistiques et verdicts à la fin du scan (nombre d'alertes, nombre de logs, nombre de paquets acceptés, etc.).
 
 Contrairement à l'analyse en temps réel, cette capture n'a généré aucune alerte dans les logs vu que Snort ne tournait pas à ce moment-là.
+
+Fin d'une capture Snort temps réel :
+
+![Question10.1](images/snort_fin_snort.png)
+
+Fin d'une capture Wireshark :
+
+![Question10.2](images/snort_fin_wireshark.png)
 
 ---
 
